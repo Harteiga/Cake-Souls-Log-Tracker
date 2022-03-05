@@ -1,65 +1,57 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Mar  3 17:46:46 2022
-
+Created on Thu Mar 3 2022, Version 1.0.1 from Fri Mar 4 2022
 @author: Harteiga
 """
-import os
-import gzip
-from tkinter import *
-from tkinter import messagebox
-from tkinter.filedialog import askdirectory
+import os, gzip, tkinter
 
-def updateDirectory(): # Updates the current directory
-    global path
-    path = askdirectory(title='Select Folder')
-    display.configure(text=f"Current directory is {path}")
+def change_path(): # Changes the current directory
+    path = tkinter.filedialog.askdirectory(title='Select Logs Folder')
+    display.configure(text=f"Current directory is {path}.")
     os.chdir(path)
     
-def getListOfFiles(dirName): # Function by Varum for searching directory
-    listOfFile = os.listdir(dirName)
-    allFiles = list()
-    for entry in listOfFile:
-        fullPath = os.path.join(dirName, entry)
-        if os.path.isdir(fullPath):
-            allFiles = allFiles + getListOfFiles(fullPath)
-        else:
-            allFiles.append(fullPath)
-    return allFiles
+def get_file_list(directory): # Lists files in directory and subdirectories
+    file_list = list()
+    for entry in os.listdir(directory):
+        full_path = os.path.join(directory, entry)
+        if os.path.isdir(full_path): file_list += get_file_list(full_path)
+        else: file_list.append(full_path)
+    return file_list
 
-def searchDirectory(): # Searches through a directory and updates the results
+def search_path(): # Searches through a directory and updates the results
     cakes_eaten = soul_drops = 0 # Initializes values
-    cake_text = " thread/INFO]: [CHAT] Yum! You gain +"
-    soul_text = " thread/INFO]: [CHAT] You found a Cake Soul!"  
-    for file in getListOfFiles(path): #Goes through logs folder
-        if file.endswith(".log.gz"): #Goes through .gz logs
-            current_file = gzip.open(file, "rb")
-            current_text = current_file.read()
-            cakes_eaten += str(current_text).count(cake_text)
-            soul_drops += str(current_text).count(soul_text)
-        elif file.endswith(".log"): #Goes through uncompressed logs
-            current_file = open(file)
-            current_text = current_file.read()
-            cakes_eaten += current_text.count(cake_text)
-            soul_drops += str(current_text).count(soul_text)
-        results.configure(text=f'The current results are: {cakes_eaten} cakes eaten, {soul_drops} cake soul drops, which can be submitted as "{cakes_eaten-soul_drops} {soul_drops} UPDATED.".')
+    CAKE_TEXT = " thread/INFO]: [CHAT] Yum! You gain +"
+    SOUL_TEXT = " thread/INFO]: [CHAT] You found a Cake Soul!"  
+    for file in get_file_list("."): # Goes through logs folder
+        if file.endswith(".log.gz"): log_text = gzip.open(file, "rb").read()
+        elif file.endswith(".log"): log_text = open(file).read()
+        else: continue
+        cakes_eaten += str(log_text).count(CAKE_TEXT)
+        soul_drops += str(log_text).count(SOUL_TEXT)
+    count.configure(text=results_text(cakes_eaten, soul_drops))
 
-path = os.getcwd() # Finds Current Path
+def results_text(cakes, souls): # Creates the text for results
+    return f'The current results are: {cakes} cakes eaten, {souls} cake soul \
+drops, which can be submitted as "{cakes-souls} {souls} UPDATED/NEW.".'
 
-frame = Tk() # Creates Window
-frame.title("Cake Souls Log Searching Tool")
-frame.geometry("750x150")
-
-Label(frame, text="Choose the directory where your logs are kept. This should be %appdata%/.minecraft/logs but may be elsewhere.").grid(row=1, column=1)
-Label(frame, text="Known supported clients are Default and Badlion. Likely to support other clients but not guaranteed.").grid(row=2, column=1)
-display = Label(frame, text=f"Current directory is {path}")
-display.grid(row=3, column=1)
-Button(frame, text="Change Directory", command=lambda: updateDirectory()).grid(row=5, column=1)
-Button(frame, text="Search Current Directory (May take some time)", command=lambda: searchDirectory()).grid(row=6, column=1)
-
-results = Label(frame, text=f'The current results are: 0 cakes eaten, 0 cake soul drops, which can be submitted as "0 0 UPDATED".')
-results.grid(row=4, column=1)
-
-frame.mainloop()
-
-
+def create_window(): # Creates the window
+    global display, count
+    root = tkinter.Tk() 
+    root.title("Cake Souls Log Searching Tool")
+    root.geometry("850x100")
+    tkinter.Label(root, text="Choose the directory where your logs are kept. \
+This is likely %appdata%/.minecraft/logs but may be elsewhere. Supported \
+clients are Vanilla and Badlion.").grid(row=1)
+    display = tkinter.Label(root, text=f"Current directory is {os.getcwd()}.")
+    display.grid(row=2)
+    count = tkinter.Label(root, text=results_text(0,0))
+    count.grid(row=3)
+    buttons = tkinter.Frame(root) # Frame for buttons
+    buttons.grid(row=4)
+    change = tkinter.Button(buttons, text="Change Directory", \
+                    command=lambda: change_path()).grid(row=1, column=1)
+    search = tkinter.Button(buttons, text="Search Current Directory", \
+                    command=lambda: search_path()).grid(row=1, column=2)
+    root.mainloop()
+    
+create_window()
